@@ -1,5 +1,6 @@
 require "crud_model/version"
 
 module CrudModel
-  # Your code goes here...
+  autoload :Wrapper, "crud_model/wrapper"
 end
+

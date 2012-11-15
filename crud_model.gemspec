@@ -20,4 +20,7 @@ Gem::Specification.new do |gem|
   # TODO: version 4 support?
   gem.add_dependency 'activesupport'
   gem.add_dependency 'activemodel'
+  gem.add_dependency 'active_attr'
+
+  gem.add_development_dependency 'activerecord'
 end
