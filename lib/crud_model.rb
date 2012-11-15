@@ -1,5 +1,6 @@
 require "crud_model/version"
 
 module CrudModel
-  # Your code goes here...
+  autoload :ModelProxy, "crud_model/model_proxy"
 end
+
