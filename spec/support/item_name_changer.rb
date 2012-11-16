@@ -17,6 +17,9 @@ module SetupItemNameChanger
             end
           end
         end
+        Item.create(name: 'ace', price: 100, sales_at: 1.day.from_now)
+        Item.create(name: 'bat', price: 200, sales_at: 1.day.from_now)
+        Item.create(name: 'car', price: 300, sales_at: 1.day.from_now)
       end
       after(:all) do
         ActiveRecord::Base.connection.tables.each do |table|
@@ -33,6 +36,7 @@ class Item < ActiveRecord::Base
   validates :price, :numericality => { :greater_than => 0 }
 end
 
+
 class ItemNameChanger
   include ActiveAttr::Model
   include CrudModel::ModelProxy
@@ -41,19 +45,21 @@ class ItemNameChanger
   extend ActiveModel::Callbacks
   define_model_callbacks :save
 
-  before_save :randomize_name
-  def randomize_name
-    self.name = 8.times.map{ [*('a'..'z')].sample }.join
-  end
+  delegate :id, :persisted?, :name, :name=, :to => :item
 
-  delegate :id, :persisted?, :name, :name=, :to => :@item
+  validate :validate_delegations
+
+  attr_accessor :wrapped
+  alias item  wrapped
+  alias item= wrapped=
 
   def self.wrap(model_object)
     new.tap do |i|
-      i.item = model_object
+      i.wrapped = model_object
     end
   end
 
+  # self.wrap_all(attr_name: objects)
   def self.wrap_all(model_objects)
     model_objects.map{|o| wrap(o) }
   end
@@ -62,11 +68,9 @@ class ItemNameChanger
     Item
   end
 
-#  def self.delegations
-#    {
-#      :@item => [:name],
-#    }
-#  end
+  def self.delegated_methods
+    [:name]
+  end
 
   # for index
   def self.all
@@ -80,29 +84,41 @@ class ItemNameChanger
 
   # for new, create
   def initialize(attributes = {})
-    @item = self.class.model_class.new(attributes)
+    self.wrapped = self.class.model_class.new(attributes)
   end
 
-  validate do
-    self.class.delegations.each do |var, attr_names|
-      # FIXME validation scope
-      model = instance_variable_get(var)
-      if model.invalid?
-        attr_names.each do |name|
-          if (errors = model.errors[name]).present?
-            errors.each do |error_message|
-              self.errors.add name, error_message
-            end
+  def validate_delegations(model = wrapped)
+    if model.invalid?
+      self.class.delegated_methods.each do |name|
+        if (errors = model.errors[name]).present?
+          errors.each do |error_message|
+            self.errors.add name, error_message
           end
         end
       end
     end
   end
 
+  # validate do
+  #   self.class.delegations.each do |var, attr_names|
+  #     # FIXME validation scope
+  #     model = send(var)
+  #     if model.invalid?
+  #       attr_names.each do |name|
+  #         if (errors = model.errors[name]).present?
+  #           errors.each do |error_message|
+  #             self.errors.add name, error_message
+  #           end
+  #         end
+  #       end
+  #     end
+  #   end
+  # end
+
   def attributes=(attributes)
     self.class.delegations.each do |var, keys|
       # FIXME validation scope
-      model = instance_variable_get(var)
+      model = send(var)
       model.attributes = attributes.slice(*keys)
     end
   end
@@ -116,8 +132,9 @@ class ItemNameChanger
   def save
     run_callbacks :save do
       return false unless valid?
+
       self.class.delegations.all? do |var, keys|
-        instance_variable_get(var).save
+        send(var).save
       end
     end
   end
