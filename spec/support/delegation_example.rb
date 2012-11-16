@@ -1,7 +1,7 @@
 #require 'active_support/all' # FIXME
 require 'active_record'
 require 'active_attr'
-require 'crud_model/delegation'
+require 'crud_model/proxy'
 
 module SetupItemNameChanger
   def self.included(klass)
@@ -39,14 +39,13 @@ end
 
 class ItemNameChanger
   include ActiveAttr::Model
-  include CrudModel::Delegation
+  include CrudModel::Proxy
+
   delegate_model :name, :to => :item
-  delegate :id, :persisted?, :name, :name=, :to => :item
 
   extend ActiveModel::Callbacks
   define_model_callbacks :save
 
-  attr_accessor :wrapped
   alias item  wrapped
   alias item= wrapped=
 
@@ -65,9 +64,6 @@ class ItemNameChanger
     Item
   end
 
-  def self.delegated_methods
-    [:name]
-  end
 
   # for index
   def self.all
@@ -116,11 +112,7 @@ class ItemNameChanger
   # end
 
   def attributes=(attributes)
-    self.class.delegations.each do |var, keys|
-      # FIXME validation scope
-      model = send(var)
-      model.attributes = attributes.slice(*keys)
-    end
+    wrapped.attributes = attributes.slice(*self.class.delegated_methods)
   end
 
   # FIXME how can i do static meta generation?
@@ -132,10 +124,7 @@ class ItemNameChanger
   def save
     run_callbacks :save do
       return false unless valid?
-
-      self.class.delegations.all? do |var, keys|
-        send(var).save
-      end
+      wrapped.save
     end
   end
 
