@@ -5,8 +5,8 @@ describe ItemNameChanger do
 
   it { should be }
 
-  describe '.model_class' do
-    subject { ItemNameChanger.model_class }
+  describe '.wrap_class' do
+    subject { ItemNameChanger.wrap_class }
     it { should == Item }
   end
 

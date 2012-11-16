@@ -1,6 +1,5 @@
 #require 'active_support/all' # FIXME
 require 'active_record'
-require 'active_attr'
 require 'crud_model/proxy'
 
 module SetupItemNameChanger
@@ -36,97 +35,8 @@ class Item < ActiveRecord::Base
   validates :price, :numericality => { :greater_than => 0 }
 end
 
-
 class ItemNameChanger
-  include ActiveAttr::Model
   include CrudModel::Proxy
-
   delegate_model :name, :to => :item
-
-  extend ActiveModel::Callbacks
-  define_model_callbacks :save
-
-  alias item  wrapped
-  alias item= wrapped=
-
-  def self.wrap(model_object)
-    new.tap do |i|
-      i.wrapped = model_object
-    end
-  end
-
-  # self.wrap_all(attr_name: objects)
-  def self.wrap_all(model_objects)
-    model_objects.map{|o| wrap(o) }
-  end
-
-  def self.model_class
-    Item
-  end
-
-
-  # for index
-  def self.all
-    wrap_all(model_class.all)
-  end
-
-  # for show, edit, update, delete
-  def self.find(id)
-    wrap(model_class.find(id))
-  end
-
-  # for new, create
-  def initialize(attributes = {})
-    self.wrapped = self.class.model_class.new(attributes)
-  end
-
-  def validate_delegations
-    if wrapped.invalid?
-      self.class.delegated_methods.each do |name|
-        if (errors = wrapped.errors[name]).present?
-          errors.each do |error_message|
-            self.errors.add name, error_message
-          end
-        end
-      end
-    end
-  end
-
-  validate :validate_delegations
-
-
-  # validate do
-  #   self.class.delegations.each do |var, attr_names|
-  #     # FIXME validation scope
-  #     model = send(var)
-  #     if model.invalid?
-  #       attr_names.each do |name|
-  #         if (errors = model.errors[name]).present?
-  #           errors.each do |error_message|
-  #             self.errors.add name, error_message
-  #           end
-  #         end
-  #       end
-  #     end
-  #   end
-  # end
-
-  def attributes=(attributes)
-    wrapped.attributes = attributes.slice(*self.class.delegated_methods)
-  end
-
-  # FIXME how can i do static meta generation?
-  def update_attributes(attributes, &block)
-    self.attributes = attributes
-    save
-  end
-
-  def save
-    run_callbacks :save do
-      return false unless valid?
-      wrapped.save
-    end
-  end
-
 end
 
