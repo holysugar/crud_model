@@ -1,7 +1,7 @@
 #require 'active_support/all' # FIXME
 require 'active_record'
 require 'active_attr'
-require 'crud_model/model_proxy'
+require 'crud_model/delegation'
 
 module SetupItemNameChanger
   def self.included(klass)
@@ -39,15 +39,12 @@ end
 
 class ItemNameChanger
   include ActiveAttr::Model
-  include CrudModel::ModelProxy
+  include CrudModel::Delegation
   delegate_model :name, :to => :item
+  delegate :id, :persisted?, :name, :name=, :to => :item
 
   extend ActiveModel::Callbacks
   define_model_callbacks :save
-
-  delegate :id, :persisted?, :name, :name=, :to => :item
-
-  validate :validate_delegations
 
   attr_accessor :wrapped
   alias item  wrapped
@@ -87,10 +84,10 @@ class ItemNameChanger
     self.wrapped = self.class.model_class.new(attributes)
   end
 
-  def validate_delegations(model = wrapped)
-    if model.invalid?
+  def validate_delegations
+    if wrapped.invalid?
       self.class.delegated_methods.each do |name|
-        if (errors = model.errors[name]).present?
+        if (errors = wrapped.errors[name]).present?
           errors.each do |error_message|
             self.errors.add name, error_message
           end
@@ -98,6 +95,9 @@ class ItemNameChanger
       end
     end
   end
+
+  validate :validate_delegations
+
 
   # validate do
   #   self.class.delegations.each do |var, attr_names|
