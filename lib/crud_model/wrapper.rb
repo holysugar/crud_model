@@ -1,8 +1,7 @@
-require 'crud_model/delegation'
 require 'active_attr'
 
 module CrudModel
-  module Proxy # FIXME to Wrapper
+  module Wrapper
     extend ActiveSupport::Concern
 
     included do
@@ -11,7 +10,6 @@ module CrudModel
       include ActiveRecordInterface
 
       attr_accessor :wrapped
-
     end
 
     module DelegationMethods
